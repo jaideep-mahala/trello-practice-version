@@ -27,9 +27,6 @@
         "prisma": "^7.9.1",
         "tsx": "^4.23.12",
       },
-      "peerDependencies": {
-        "typescript": "^7",
-      },
     },
     "packages/eslint-config": {
       "name": "@repo/eslint-config",
