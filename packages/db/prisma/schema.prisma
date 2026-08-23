@@ -13,10 +13,254 @@ datasource db {
 }
 
 
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum MembershipRole {
+  MEMBER
+  ADMIN
+}
+
+
+// ============================================================
+// USER
+// ============================================================
+
 model User {
   id        String   @id @default(uuid())
   username  String
   email     String   @unique
   password  String
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // User <-> Organization
+  memberships Membership[]
+
+  // User <-> Issue
+  issueMappings IssueMapping[]
+
+  // User -> Comments
+  comments Comment[]
+
+  @@index([email])
+}
+
+
+// ============================================================
+// ORGANIZATION
+// ============================================================
+
+model Organization {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Organization <-> User
+  memberships Membership[]
+
+  // Organization -> Boards
+  boards Board[]
+
+  @@index([name])
+}
+
+
+// ============================================================
+// MEMBERSHIP
+// Connects Users and Organizations
+//
+// User        Organization
+//   |               |
+//   +----Membership-+
+//
+// This represents the many-to-many relationship.
+// ============================================================
+
+model Membership {
+  id     String         @id @default(uuid())
+  userId String
+  orgId  String
+  role   MembershipRole @default(MEMBER)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // A user can belong to an organization only once.
+  @@unique([userId, orgId])
+
+  @@index([userId])
+  @@index([orgId])
+}
+
+
+// ============================================================
+// BOARD
+// Organization -> Board = 1 : Many
+// ============================================================
+
+model Board {
+  id             String @id @default(uuid())
+  title          String
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Board -> Issues
+  issues Issue[]
+
+  // Board -> Sections
+  sections Section[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+
+// ============================================================
+// SECTION
+//
+// Example:
+//
+// Board
+//  ├── Upcoming
+//  ├── In Progress
+//  └── Completed
+//
+// Section -> Issue = 1 : Many
+// ============================================================
+
+model Section {
+  id      String @id @default(uuid())
+  title   String
+  boardId String
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  // Section -> Issues
+  issues Issue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([boardId])
+}
+
+
+// ============================================================
+// ISSUE
+//
+// An Issue belongs to:
+// 1. One Board
+// 2. One Section
+//
+// An Issue can:
+// 1. Have many assigned users
+// 2. Have many comments
+// ============================================================
+
+model Issue {
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+
+  boardId   String
+  sectionId String
+
+  // Issue -> Board
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  // Issue -> Section
+  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  // Issue <-> User
+  issueMappings IssueMapping[]
+
+  // Issue -> Comments
+  comments Comment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([boardId])
+  @@index([sectionId])
+}
+
+
+// ============================================================
+// ISSUE MAPPING
+//
+// Explicit many-to-many relationship:
+//
+// User <-> Issue
+//
+// Example:
+//
+// User 1 -> Issue 1
+// User 1 -> Issue 2
+// User 2 -> Issue 1
+//
+// This table is useful for assigning multiple users to an issue.
+// ============================================================
+
+model IssueMapping {
+  id      String @id @default(uuid())
+  userId  String
+  issueId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  // Prevent assigning the same user to the same issue twice.
+  @@unique([userId, issueId])
+
+  @@index([userId])
+  @@index([issueId])
+}
+
+
+// ============================================================
+// COMMENT
+//
+// One Issue can have many comments.
+// One User can write many comments.
+//
+// Example:
+//
+// Issue
+//  ├── Comment by User 1
+//  ├── Comment by User 2
+//  └── Comment by User 1
+// ============================================================
+
+model Comment {
+  id      String @id @default(uuid())
+  content String
+
+  issueId String
+  userId  String
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([issueId])
+  @@index([userId])
 }
