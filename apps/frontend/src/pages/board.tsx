@@ -7,7 +7,7 @@ export function Board() {
   const [ws, setWs] = useState();
 
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:3005");
+    const ws = new WebSocket("ws://localhost:4001");
     setWs(ws);
     ws.onmessage = (ev) => {
       const data = ev.data;
